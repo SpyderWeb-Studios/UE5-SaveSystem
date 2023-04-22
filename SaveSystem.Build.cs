@@ -9,7 +9,7 @@ public class SaveSystem : ModuleRules
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core", "ClueSystem"
+                "Core"
             }
         );
 
