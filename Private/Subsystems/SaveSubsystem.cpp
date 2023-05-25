@@ -2,83 +2,109 @@
 
 
 #include "Subsystems/SaveSubsystem.h"
-
-#include "FunctionLibrary/DebugFunctionLibrary.h"
+#include "GameFramework/SaveGame.h"
 #include "Kismet/GameplayStatics.h"
 
 void USaveSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	
-	LoadData();
 }
 
 void USaveSubsystem::StartNewSave()
 {
-	if(UGameplayStatics::DoesSaveGameExist(PlayerSaveSlot, 0)) UGameplayStatics::DeleteGameInSlot(PlayerSaveSlot, 0);
-
+	if(UGameplayStatics::DoesSaveGameExist(GetPlayerSaveSlot(), 0))
+	{
+		UGameplayStatics::DeleteGameInSlot(GetPlayerSaveSlot(), 0);
+	}
 	LoadData();
 }
 
 
 void USaveSubsystem::OnAsyncLoadFinished(const FString& SlotName, const int32 UserIndex, USaveGame* SaveGame)
 {
-	UDebugFunctionLibrary::DebugLogWithObject(this, "Async Loading Finished", EDebugType::DT_Log);
-	if(SaveGame)
+	UE_LOG(LogSaveSystem, Display, TEXT("Async Loading Finished"));
+	if(IsValid(SaveGame))
 	{
-		UDebugFunctionLibrary::DebugLogWithObject(this, "Save Game Pointer is Valid", EDebugType::DT_Log);
+		UE_LOG(LogSaveSystem, Display, TEXT("Save Game Pointer is Valid"));
+		PlayerSaveObject = SaveGame;
 		OnPlayerDataLoaded.Broadcast(SaveGame);
 	}
-	
+
+#ifndef UE_BUILD_SHIPPING
+	else
+	{
+		UE_LOG(LogSaveSystem, Error, TEXT("Save Game Pointer is Invalid"));
+	}
+#endif
 }
 
 void USaveSubsystem::OnAsyncSaveFinished(const FString& SlotName, const int32 UserIndex, bool bSuccess)
 {
-	UDebugFunctionLibrary::DebugLogWithObject(this, "Async Saving Finished", EDebugType::DT_Log);
-	if(bSuccess)
+	UE_LOG(LogSaveSystem, Display, TEXT("Async Saving Finished"));
+	OnPlayerDataSaved.Broadcast(bSuccess);
+	if(!bSuccess)
 	{
-		UDebugFunctionLibrary::DebugLogWithObject(this, "Save was Successful", EDebugType::DT_Log);
+		UE_LOG(LogSaveSystem, Error, TEXT("Save Failed for Slot: %s"), *SlotName);
+		return;
 	}
+	UE_LOG(LogSaveSystem, Display, TEXT("Save was Successful"));
 }
 
 void USaveSubsystem::SetSaveGameClass(TSubclassOf<USaveGame> SaveGameSubClass)
 {
 	SaveGameClass = SaveGameSubClass;
+	StartNewSave();
+}
+
+FString USaveSubsystem::GetPlayerSaveSlot()
+{
+	return "";
 }
 
 void USaveSubsystem::SaveData()
 {
-	UDebugFunctionLibrary::DebugLogWithObject(this, "Saving Player Data", EDebugType::DT_Log);
+	
+	UE_LOG(LogSaveSystem, Display, TEXT("Saving Player Data"));
+	
 	// If it isn't Valid, Create a new instance
 	if(!PlayerSaveObject)
 	{
-		UDebugFunctionLibrary::DebugLogWithObject(this, "Player Save is NOT Valid. Creating New Instance", EDebugType::DT_Log);
+		UE_LOG(LogSaveSystem, Warning, TEXT("Player Save is NOT Valid. Creating New Instance"));
 		PlayerSaveObject = UGameplayStatics::CreateSaveGameObject(SaveGameClass);
 	}
 	FAsyncSaveGameToSlotDelegate asyncSaveDelegate;
 	asyncSaveDelegate.BindUObject(this, &USaveSubsystem::OnAsyncSaveFinished);
-	UGameplayStatics::AsyncSaveGameToSlot(PlayerSaveObject, PlayerSaveSlot, 0, asyncSaveDelegate);
+	UGameplayStatics::AsyncSaveGameToSlot(PlayerSaveObject, GetPlayerSaveSlot(), 0, asyncSaveDelegate);
 }
 
 void USaveSubsystem::LoadData()
 {
-	UDebugFunctionLibrary::DebugLogWithObject(this, "Attempting to Load Data", EDebugType::DT_Log);
+	UE_LOG(LogSaveSystem, Display, TEXT("Attempting to Load Data"));
 
 	// If a save game exists in a slot, then load it
-	if(UGameplayStatics::DoesSaveGameExist(PlayerSaveSlot, 0))
+	if(UGameplayStatics::DoesSaveGameExist(GetPlayerSaveSlot(), 0))
 	{
-		UDebugFunctionLibrary::DebugLogWithObject(this, "Player Save Data Exists. Async Loading", EDebugType::DT_Log);
+		UE_LOG(LogSaveSystem, Display, TEXT("Player Save Data Exists. Async Loading"));
 		
 		FAsyncLoadGameFromSlotDelegate asyncLoadDelegate;
 		asyncLoadDelegate.BindUObject(this, &USaveSubsystem::OnAsyncLoadFinished);
-		UGameplayStatics::AsyncLoadGameFromSlot(PlayerSaveSlot, 0, asyncLoadDelegate);
+		UGameplayStatics::AsyncLoadGameFromSlot(GetPlayerSaveSlot(), 0, asyncLoadDelegate);
 	}
 
 	// Otherwise, create one
 	else
 	{
-		UDebugFunctionLibrary::DebugLogWithObject(this, "No Player Save Data Exists. Creating New One", EDebugType::DT_Log);
-		
-		OnAsyncLoadFinished(PlayerSaveSlot, 0, UGameplayStatics::CreateSaveGameObject(SaveGameClass));
+		UE_LOG(LogSaveSystem, Warning, TEXT("No Player Save Data Exists. Creating New One with Class: %s"), *GetNameSafe(SaveGameClass));
+		OnAsyncLoadFinished(GetPlayerSaveSlot(), 0, UGameplayStatics::CreateSaveGameObject(SaveGameClass));
 	}
+}
+
+void USaveSubsystem::ClearSave()
+{
+	if(UGameplayStatics::DoesSaveGameExist(GetPlayerSaveSlot(), 0))
+	{
+		UE_LOG(LogSaveSystem, Display, TEXT("Deleting Save Data"));
+		UGameplayStatics::DeleteGameInSlot(GetPlayerSaveSlot(), 0);
+	}
+	PlayerSaveObject = nullptr;
 }
