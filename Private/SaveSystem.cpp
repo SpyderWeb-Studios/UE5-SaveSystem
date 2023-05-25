@@ -14,3 +14,5 @@ void FSaveSystemModule::ShutdownModule()
 #undef LOCTEXT_NAMESPACE
     
 IMPLEMENT_MODULE(FSaveSystemModule, SaveSystem)
+
+DEFINE_LOG_CATEGORY(LogSaveSystem);

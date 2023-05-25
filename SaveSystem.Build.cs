@@ -9,7 +9,7 @@ public class SaveSystem : ModuleRules
         PublicDependencyModuleNames.AddRange(
             new string[]
             {
-                "Core", "ClueSystem"
+                "Core"
             }
         );
 
@@ -17,7 +17,7 @@ public class SaveSystem : ModuleRules
             new string[]
             {
                 "CoreUObject",
-                "Engine", "Helper"
+                "Engine"
             }
         );
     }
