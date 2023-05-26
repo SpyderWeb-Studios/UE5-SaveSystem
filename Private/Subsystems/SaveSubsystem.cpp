@@ -3,6 +3,7 @@
 
 #include "Subsystems/SaveSubsystem.h"
 #include "GameFramework/SaveGame.h"
+#include "Interfaces/SaveObjectInterface.h"
 #include "Kismet/GameplayStatics.h"
 
 void USaveSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -37,6 +38,16 @@ void USaveSubsystem::OnAsyncLoadFinished(const FString& SlotName, const int32 Us
 	{
 		UE_LOG(LogSaveSystem, Display, TEXT("Save Game Pointer is Valid"));
 		PlayerSaveObject = SaveGame;
+		// Check if the Player Save Object implements the Save Object Interface
+		if(PlayerSaveObject->GetClass()->ImplementsInterface(USaveObjectInterface::StaticClass()))
+		{
+			UE_LOG(LogSaveSystem, Display, TEXT("Save Game Object Implements Save Object Interface"));
+			ISaveObjectInterface::Execute_OnObjectLoaded(PlayerSaveObject);
+		}
+		else
+		{
+			UE_LOG(LogSaveSystem, Warning, TEXT("Save Game Object Does NOT Implement Save Object Interface"));
+		}
 		OnPlayerDataLoaded.Broadcast(SaveGame);
 	}
 
@@ -60,10 +71,10 @@ void USaveSubsystem::OnAsyncSaveFinished(const FString& SlotName, const int32 Us
 	UE_LOG(LogSaveSystem, Display, TEXT("Save was Successful"));
 }
 
-void USaveSubsystem::SetSaveGameClass(TSubclassOf<USaveGame> SaveGameSubClass)
+void USaveSubsystem::SetSaveGameClass(TSubclassOf<USaveGame> SaveGameSubClass, bool bResetSaveObject)
 {
 	_SaveGameClass = SaveGameSubClass;
-	StartNewSave();
+	if(bResetSaveObject) StartNewSave();
 }
 
 FString USaveSubsystem::GetPlayerSaveSlot()
@@ -100,6 +111,22 @@ USaveGame* USaveSubsystem::GetSaveGameObject(const TSubclassOf<USaveGame> SaveGa
 	}
 	return PlayerSaveObject;
 }
+
+bool USaveSubsystem::AssignSaveGameObject(USaveGame* SaveGameObject)
+{
+	if(!IsValid(SaveGameObject))
+	{
+		UE_LOG(LogSaveSystem, Error, TEXT("Save Game Object is NOT Valid"));
+		return false;
+	}
+
+	UE_LOG(LogSaveSystem, Display, TEXT("Assigning Save Game Object with: "), *GetNameSafe(SaveGameObject));
+		
+	PlayerSaveObject = SaveGameObject;
+	return true;
+}
+
+
 
 void USaveSubsystem::SaveData(bool bAsync)
 {

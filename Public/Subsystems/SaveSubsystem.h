@@ -14,7 +14,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDataLoaded, USaveGame*, Pla
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDataSaved, bool, bSuccess);
 
 /**
- * 
+ * The Save Subsystem is a Game Instance Subsystem that handles the saving and loading of the Player Data. It is a base class that should be extended to add functionality.
+ *
+ * It needs to be both Abstract and NotBlueprintType because it is a base class but we don't want it to be used directly, nor do we want it to automatically be created.
  */
 UCLASS(Abstract, NotBlueprintType)
 class SAVESYSTEM_API USaveSubsystem : public UGameInstanceSubsystem
@@ -82,7 +84,7 @@ public:
 	 * @param SaveGameSubClass The Save Game Class to use for the Player
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void SetSaveGameClass(TSubclassOf<USaveGame> SaveGameSubClass);
+	void SetSaveGameClass(TSubclassOf<USaveGame> SaveGameSubClass, bool bResetSaveObject = true);
 
 	/**
 	 * @brief Overridable function to get the name of the Save Slot to use for the Player, if you want to use a different one
@@ -90,12 +92,33 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "Save System")
 	virtual FString GetPlayerSaveSlot();
-	
+
+	/**
+	 * @brief Retrieves the Save Game Object for the Player,
+	 * BP Only - casts it to the specified class if it is valid
+	 * @param SaveGameClass The Class to cast the Save Game Object to
+	 * @param bIsValid Whether the Save Game Object is valid or not. Reference so that it can be used in Blueprints with multiple return values
+	 * @return The Save Game Object for the Player
+	 */
 	UFUNCTION(BlueprintPure, meta = (DeterminesOutputType = "SaveGameClass"))
 	USaveGame* GetValidatedSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass, bool& bIsValid);
 
+	/**
+	 * @brief Retrieves the Save Game Object for the Player
+	 * BP Only - casts it to the specified class if it is valid
+	 * @param SaveGameClass The Class to cast the Save Game Object to
+	 * @return The Save Game Object for the Player
+	 */
 	UFUNCTION(BlueprintPure, meta = (DeterminesOutputType = "SaveGameClass"))
 	USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass);
+
+protected:
+	/**
+	 * @brief Assigns the Save Game Object for the Player, and calls the OnPlayerDataLoaded Event
+	 * @param SaveGameObject The Save Game Object to assign to the Player Data
+	 * @return Whether the Assignment was valid or not
+	 */
+	bool AssignSaveGameObject(USaveGame* SaveGameObject);
 	
 private:
 	/**

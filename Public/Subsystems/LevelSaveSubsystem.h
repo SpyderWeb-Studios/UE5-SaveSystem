@@ -32,12 +32,7 @@ public:
 	void LoadData();
 	
 protected:
-	/**
-	 * @brief 
-	 * @param SlotName 
-	 * @param UserIndex 
-	 * @param SaveGame 
-	 */
+
 	UFUNCTION()
 	virtual void OnAsyncLoadFinished(const FString& SlotName, const int32 UserIndex, USaveGame* SaveGame);
 		

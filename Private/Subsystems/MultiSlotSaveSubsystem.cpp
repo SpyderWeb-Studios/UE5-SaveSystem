@@ -4,16 +4,18 @@
 #include "Subsystems/MultiSlotSaveSubsystem.h"
 
 #include "GameFramework/SaveGame.h"
+#include "Interfaces/SaveObjectInterface.h"
 #include "Kismet/GameplayStatics.h"
 
 void UMultiSlotSaveSubsystem::Deinitialize()
 {
 	OnSlotRemoved.Clear();
 	OnSlotAdded.Clear();
+		
 	Super::Deinitialize();
 }
 
-bool UMultiSlotSaveSubsystem::AddSlot(FString SlotName)
+bool UMultiSlotSaveSubsystem::AddSlot(FString SlotName, bool bCheckLocal)
 {
 	if(SlotName.IsEmpty() || SlotName.Len() < 1 || SlotName.Equals(TEXT("")) || SlotName.Equals(TEXT(" ")) )
 	{
@@ -22,9 +24,9 @@ bool UMultiSlotSaveSubsystem::AddSlot(FString SlotName)
 		return false;
 	}
 	
-	if(UGameplayStatics::DoesSaveGameExist(SlotName, 0))
+	if(bCheckLocal && UGameplayStatics::DoesSaveGameExist(SlotName, 0))
 	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Slot Name already exists"));
+		UE_LOG(LogSaveSystem, Error, TEXT("Slot Name already exists locally"));
 		// If the Slot Name already exists, return false
 		return false;
 	}
@@ -51,9 +53,9 @@ bool UMultiSlotSaveSubsystem::AddSlot(FString SlotName)
 	return false;
 }
 
-bool UMultiSlotSaveSubsystem::AddSlotAndSetAsActive(FString SlotName)
+bool UMultiSlotSaveSubsystem::AddSlotAndSetAsActive(FString SlotName, bool bCheckLocal)
 {
-	if(AddSlot(SlotName))
+	if(AddSlot(SlotName, bCheckLocal))
 	{
 		return SetActiveSlotByName(SlotName);
 	}
@@ -173,6 +175,54 @@ bool UMultiSlotSaveSubsystem::CreateSaveGameAtSlotByName(FString SlotName, bool 
 	}
 	
 	return CreateSaveGameAtSlot(SaveSlots.IndexOfByKey(SlotName), bOverwriteIfPresent);
+}
+
+bool UMultiSlotSaveSubsystem::ReceiveLoadedSaveGame(int SlotIndex, FString SlotName)
+{
+
+	USaveGame* SaveGame = UGameplayStatics::LoadGameFromSlot(SlotName, 0);
+	
+	// Log the Slot Name and Index
+	UE_LOG(LogSaveSystem, Display, TEXT("Loaded Save Game from Slot %s at Index %d"), *SlotName, SlotIndex);
+	
+	if(!SaveGame)
+	{
+		UE_LOG(LogSaveSystem, Error, TEXT("Save Game is not valid"));
+		return false;
+	}
+
+	if(!SaveGame->GetClass())
+	{
+		UE_LOG(LogSaveSystem, Error, TEXT("Save Game Class is not valid"));
+		return false;
+	}
+	
+	// Create a slot and save game, with the loaded save game
+	if(!AddSlot(SlotName, false)) return false;
+	const int OldSlot = CurrentSaveSlot;
+
+	// Creates a new save game at the slot index, and sets it as the active slot
+	SetActiveSlot(SlotIndex);
+	SetSaveGameClass(SaveGame->GetClass(), false);
+	LoadData();
+
+	// Assign the loaded save game to the current save game
+	AssignSaveGameObject(SaveGame);
+	if(SaveGame->GetClass()->ImplementsInterface(USaveObjectInterface::StaticClass()))
+	{
+		UE_LOG(LogSaveSystem, Display, TEXT("Save Game Object Implements Save Object Interface"));
+		ISaveObjectInterface::Execute_OnObjectLoaded(SaveGame);
+	}
+	else
+	{
+		UE_LOG(LogSaveSystem, Warning, TEXT("Save Game Object Does NOT Implement Save Object Interface"));
+	}
+	
+	OnSaveCreated.Broadcast(CurrentSaveSlot, SaveSlots[CurrentSaveSlot]);
+	
+	if(OldSlot > -1) SetActiveSlot(OldSlot);
+	
+	return true;
 }
 
 bool UMultiSlotSaveSubsystem::CreateSaveGameAtActiveSlot(bool bOverwriteIfPresent)
