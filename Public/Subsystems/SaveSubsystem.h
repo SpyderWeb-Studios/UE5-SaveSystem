@@ -23,30 +23,32 @@ class SAVESYSTEM_API USaveSubsystem : public UGameInstanceSubsystem
 public:
 
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+
+	virtual void Deinitialize() override;
 	
 	/**
 	 * @brief Event Dispatcher for when the Player Data is loaded, and passes the Save Game Object
 	 */
-	UPROPERTY(BlueprintAssignable, Category = "Save System")
+	UPROPERTY(BlueprintAssignable, Category = "Save System|Event Dispatchers")
 	FOnPlayerDataLoaded OnPlayerDataLoaded;
 
 	/**
 	 * @brief Event Dispatcher for when the Player Data is saved, and passes whether the save was successful or not
 	 */
-	UPROPERTY(BlueprintAssignable, Category = "Save System")
+	UPROPERTY(BlueprintAssignable, Category = "Save System|Event Dispatchers")
 	FOnPlayerDataSaved OnPlayerDataSaved;
 
 	/**
 	 * @brief Creates a New Save Game, and overwrites the old one if it exists
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void StartNewSave();
+	void StartNewSave(bool bLoad = false);
 	
 	/**
 	 * @brief Saves the current Player Data to the Save Slot. Creates a new instance if the current one is invalid or non existent
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void SaveData();
+	void SaveData(bool bAsync = true);
 
 	/**
 	 * @brief Loads the Player Data from the Save Slot. Creates a new instance if the current one is invalid or non existent
@@ -83,21 +85,27 @@ public:
 	void SetSaveGameClass(TSubclassOf<USaveGame> SaveGameSubClass);
 
 	/**
-	 * @brief The Current Save Game Object for the Player Data. This is the one that is saved and loaded
-	 */
-	UPROPERTY(BlueprintReadOnly, Category = "Save System")
-	TObjectPtr<USaveGame> PlayerSaveObject;
-
-	/**
 	 * @brief Overridable function to get the name of the Save Slot to use for the Player, if you want to use a different one
 	 * @return The name of the Save Slot to use for the Player
 	 */
 	UFUNCTION(BlueprintPure, Category = "Save System")
 	virtual FString GetPlayerSaveSlot();
 	
+	UFUNCTION(BlueprintPure, meta = (DeterminesOutputType = "SaveGameClass"))
+	USaveGame* GetValidatedSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass, bool& bIsValid);
+
+	UFUNCTION(BlueprintPure, meta = (DeterminesOutputType = "SaveGameClass"))
+	USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass);
+	
 private:
 	/**
 	 * @brief The Class to use for the Save Game Object
 	 */
-	 TSubclassOf<USaveGame> SaveGameClass;
+	TSubclassOf<USaveGame> _SaveGameClass;
+	
+	/**
+	* @brief The Current Save Game Object for the Player Data. This is the one that is saved and loaded
+	*/
+	UPROPERTY()
+	TObjectPtr<USaveGame> PlayerSaveObject;
 };

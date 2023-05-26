@@ -11,7 +11,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(Abstract, NotBlueprintType)
 class SAVESYSTEM_API ULevelSaveSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
