@@ -3,7 +3,9 @@
 
 #include "Subsystems/SingleSlotSaveSubsystem.h"
 
+
 FString USingleSlotSaveSubsystem::GetPlayerSaveSlot()
 {
 	return PlayerSaveSlot;
 }
+

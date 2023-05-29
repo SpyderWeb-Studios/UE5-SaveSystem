@@ -44,22 +44,22 @@ public:
 	 * @brief Creates a New Save Game, and overwrites the old one if it exists
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void StartNewSave(bool bLoad = false);
+	void StartNewSave(bool bLoad = false, bool bVerbose = true);
 	
 	/**
 	 * @brief Saves the current Player Data to the Save Slot. Creates a new instance if the current one is invalid or non existent
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void SaveData(bool bAsync = true);
+	void SaveData(bool bAsync = true, bool bVerbose = true);
 
 	/**
 	 * @brief Loads the Player Data from the Save Slot. Creates a new instance if the current one is invalid or non existent
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void LoadData();
+	void LoadData(bool bVerbose = true);
 
 	UFUNCTION(BlueprintCallable, Category="Save System")
-	void ClearSave();
+	void ClearSave(bool bVerbose = true);
 	
 	/**
 	 * @brief Is called when the Async Load is finished, and calls the OnPlayerDataLoaded Event
@@ -110,7 +110,17 @@ public:
 	 * @return The Save Game Object for the Player
 	 */
 	UFUNCTION(BlueprintPure, meta = (DeterminesOutputType = "SaveGameClass"))
-	USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass);
+	USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass, bool bVerbose = true);
+
+	/**
+	 * @brief Retrieves the Save Game Object for the Player, without casting it to the specified class
+	 * @return The Save Game Object for the Player
+	 */
+	UFUNCTION(BlueprintPure)
+	USaveGame* GetRawSaveGameObject();
+
+	UFUNCTION(BlueprintPure)
+	TSubclassOf<USaveGame> GetSaveGameClass();
 
 protected:
 	/**

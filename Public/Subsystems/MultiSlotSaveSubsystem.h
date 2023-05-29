@@ -18,9 +18,9 @@ class SAVESYSTEM_API UMultiSlotSaveSubsystem : public USaveSubsystem
 {
 	GENERATED_BODY()
 	
-DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FMultiSlotSaveSubsystemSlotAdded, UMultiSlotSaveSubsystem, OnSlotAdded, int, SlotIndex, FString, SlotName);
-DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FMultiSlotSaveSubsystemSlotRemoved, UMultiSlotSaveSubsystem, OnSlotRemoved, int, SlotIndex, FString, SlotName);
-DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_TwoParams(FMultiSlotSaveSubsystemSaveCreated, UMultiSlotSaveSubsystem, OnSaveCreated, int, SlotIndex, FString, SlotName);
+	DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FMultiSlotSaveSubsystemSlotAdded, UMultiSlotSaveSubsystem, OnSlotAdded, FString, SlotName);
+	DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FMultiSlotSaveSubsystemSlotRemoved, UMultiSlotSaveSubsystem, OnSlotRemoved, FString, SlotName);
+	DECLARE_DYNAMIC_MULTICAST_SPARSE_DELEGATE_OneParam(FMultiSlotSaveSubsystemSaveCreated, UMultiSlotSaveSubsystem, OnSaveCreated, FString, SlotName);
 
 	
 public:
@@ -29,7 +29,12 @@ public:
 
 	virtual FString GetPlayerSaveSlot() override
 	{
-		if(SaveSlots.IsValidIndex(CurrentSaveSlot)) return SaveSlots[CurrentSaveSlot];
+		// Check if the Current Save Slot is valid and return it if it is
+		if (SaveSlots.Contains(CurrentSaveSlot))
+		{
+			return CurrentSaveSlot;
+		}
+		
 		return "";
 	}
 
@@ -58,185 +63,92 @@ public:
 
 #pragma region Add Slot
 
-	/**
-	 * @brief Adds a new Slot to the Save System
-	 * @param SlotName The name of the Slot to add
-	 * @param bCheckLocal Whether to check if the Slot already exists locally
-	 * @return Whether the Slot was added successfully
-	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Add Slot")
-	virtual bool AddSlot(FString SlotName, bool bCheckLocal = true);
+	bool AddSlot(FString SlotName, bool bVerbose = true);
 
-	/**
-	 * @brief Adds a new Slot to the Save System and sets it as the active Slot
-	 * @param SlotName The name of the Slot to add
-	 * @param bCheckLocal Whether to check if the Slot already exists locally
-	 * @return Whether the Slot was added successfully
-	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Add Slot")
-	virtual bool AddSlotAndSetAsActive(FString SlotName, bool bCheckLocal = true);
-
-#pragma endregion
-
-#pragma region Set Active Slot
-
-	/**
-	 * @brief Sets the Active Slot by Index
-	 * @param SlotIndex The Index of the Slot to set as Active
-	 * @return Whether the Active Slot was set successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Set Active Slot")
-	virtual bool SetActiveSlot(int SlotIndex);
-
-	/**
-	 * @brief Sets the Active Slot by Name
-	 * @param SlotName The Name of the Slot to set as Active
-	 * @return Whether the Active Slot was set successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Set Active Slot")
-	virtual bool SetActiveSlotByName(FString SlotName);
+	bool AddSlotAndSetActive(FString SlotName, bool bLoad = false, bool bVerbose = true);
 
 #pragma endregion
 
 #pragma region Remove Slot
 
-	/**
-	 * @brief Removes a Slot by Index
-	 * @param SlotIndex The Index of the Slot to remove
-	 * @return Whether the Slot was removed successfully
-	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Remove Slot")
-	virtual bool RemoveSlot(int SlotIndex);
+	bool RemoveSlot(FString SlotName, bool bVerbose = true);
 
-	/**
-	 * @brief Removes a Slot by Name
-	 * @param SlotName The Name of the Slot to remove
-	 * @return Whether the Slot was removed successfully
-	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Remove Slot")
-	virtual bool RemoveSlotByName(FString SlotName);
+	bool RemoveActiveSlot(bool bVerbose = true);
 
 #pragma endregion
 
-#pragma region Getters
+#pragma region Save Slot
 
-	/**
-	 * @brief Gets the Slot Name by the Index in the Save System
-	 * @param SlotIndex The Index of the Slot to remove
-	 * @return The Name of the Slot
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Get Slot")
-	virtual FString GetSlotName(int SlotIndex);
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Save Slot")
+	bool SaveSlot(FString SlotName, bool bAsync = true, bool bVerbose = true);
 
-	/**
-	 * @brief Gets the Slot Index by the Name in the Save System
-	 * @param SlotName The Name of the Slot to remove
-	 * @return The Index of the Slot
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Get Slot")
-	virtual int GetSlotIndex(FString SlotName);
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Save Slot")
+	bool SaveActiveSlot(bool bAsync = true, bool bVerbose = true);
 
-	/**
-	 * @brief Gets the Active Slot Index
-	 * @return The Index of the Active Slot
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Get Slot")
-	virtual int GetActiveSlotIndex();
+#pragma endregion 
 
-	/**
-	 * @brief Gets the Active Slot Name
-	 * @return The Name of the Active Slot
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Get Slot")
-	virtual FString GetActiveSlotName();
+#pragma region Load Slot
 
-	/**
-	 * @brief Gets the Save Game Object at the Index in the Save System
-	 * @param SlotIndex The Index of the Slot to get the Save Game Object from
-	 * @return The Save Game Object
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Get Slot")
-	virtual USaveGame* GetSaveGameAtSlot(int SlotIndex);
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Load Slot")
+	bool LoadSlot(FString SlotName, bool bAsync = true, bool bVerbose = true);
 
-	/**
-	 * @brief Gets the Save Game Object at the Name in the Save System
-	 * @param SlotName The Name of the Slot to get the Save Game Object from
-	 * @return The Save Game Object
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Get Slot")
-	virtual USaveGame* GetSaveGameAtSlotByName(FString SlotName);
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Load Slot")
+	bool LoadActiveSlot(bool bAsync = true, bool bVerbose = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Load Slot")
+	bool LoadSlotFromDisk(FString SlotName, bool bVerbose = true);
 
 #pragma endregion
 
-#pragma region Create Save Game
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System")
+	bool SetActiveSlot(const FString& String, bool bLoad, bool bVerbose = true);
 
-	/**
-	 * @brief Creates a Save Game Object at the Active Slot
-	 * @param bOverwriteIfPresent Whether to overwrite the Save Game Object if it already exists
-	 * @return Whether the Save Game Object was created successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Create Save Game|Base")
-    virtual bool CreateSaveGameAtActiveSlot(bool bOverwriteIfPresent = true);
+	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
+	FString GetActiveSlot() {return CurrentSaveSlot;}
 
-	/**
-	 * @brief Creates a Save Game Object at the Active Slot and sets it as the Active Slot
-	 * @param SlotName The name of the Slot to add
-	 * @param bOverwriteIfPresent Whether to overwrite the Save Game Object if it already exists
-	 * @return Whether the Save Game Object was created successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Create Save Game|Base")
-    virtual bool CreateSaveGameAndSetActiveSlot(FString SlotName, bool bOverwriteIfPresent = true);
-
-	/**
-	 * @brief Creates a Save Game Object at the Active Slot and sets it as the Active Slot
-	 * @param SlotIndex The Index of the Slot to add
-	 * @param bOverwriteIfPresent Whether to overwrite the Save Game Object if it already exists
-	 * @return Whether the Save Game Object was created successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Create Save Game|Base")
-    virtual bool CreateSaveGameWithIndexAndSetActiveSlot(int SlotIndex, bool bOverwriteIfPresent = true);
-
-	/**
-	 * @brief Creates a Save Game Object at SlotIndex
-	 * @param SlotIndex The Index of the Slot to add
-	 * @param bOverwriteIfPresent Whether to overwrite the Save Game Object if it already exists
-	 * @return Whether the Save Game Object was created successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Create Save Game|Advanced")
-	virtual bool CreateSaveGameAtSlot(int SlotIndex, bool bOverwriteIfPresent = true);
-
-	/**
-	 * @brief Creates a Save Game Object at SlotName
-	 * @param SlotName The Name of the Slot to add
-	 * @param bOverwriteIfPresent Whether to overwrite the Save Game Object if it already exists
-	 * @return Whether the Save Game Object was created successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Create Save Game|Advanced")
-	virtual bool CreateSaveGameAtSlotByName(FString SlotName, bool bOverwriteIfPresent = true);
-
-	/**
-	 * @brief When a Save Game Object external to the Save System is loaded, this function should be called to add it to the Save System
-	 * @param SlotIndex The Index of the Slot to add
-	 * @param SlotName The Name of the Slot to add
-	 * @return Whether the Save Game Object was added successfully
-	 */
-	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Create Save Game|Advanced")
-	virtual bool ReceiveLoadedSaveGame(int SlotIndex, FString SlotName);
-
-#pragma endregion
-
+	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
+	TArray<USaveGame*> GetAllSaveSlots(bool bVerbose = true);
+	
 protected:
+
+	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
+	USaveGame* GetSaveSlot(FString SlotName, bool bVerbose = true);
+
+	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
+	USaveGame* GetActiveSaveSlot(bool bVerbose = true);
+	
 	/**
-	 * @brief The Array of Save Slots in the Save System
+	 * @brief The Map of Save Slots in the Save System
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "Save System|Multi Slot Save System")
-	TArray<FString> SaveSlots;
+	TMap<FString, TWeakObjectPtr<USaveGame>> SaveSlots;
 
 	/**
 	 * @brief The Index of the Active Slot in the Save System
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "Save System|Multi Slot Save System")
-	int CurrentSaveSlot = 0;
+	FString CurrentSaveSlot = "";
 
-	
+	TArray<TWeakObjectPtr<USaveGame>> CreatedSaveGames;
 };
+
+inline TArray<USaveGame*> UMultiSlotSaveSubsystem::GetAllSaveSlots(bool bVerbose)
+{
+	// Get All the Created Save Games and add them to a temp array
+	TArray<USaveGame*> TempArray;
+	for (auto SaveGame : CreatedSaveGames)
+	{
+		if(SaveGame.IsValid())
+		{
+			TempArray.Add(SaveGame.Get());
+		}
+	}
+
+	if(bVerbose) UE_LOG(LogTemp, Warning, TEXT("Created and Valid Save Games: %d"), TempArray.Num());
+	
+	return TempArray;
+}
+
+

@@ -25,4 +25,7 @@ public:
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SaveSystem")
     void OnObjectLoaded();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SaveSystem")
+	void OnObjectSaved();
 };

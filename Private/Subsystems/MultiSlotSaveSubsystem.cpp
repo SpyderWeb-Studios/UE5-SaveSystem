@@ -3,6 +3,7 @@
 
 #include "Subsystems/MultiSlotSaveSubsystem.h"
 
+#include "SaveGameSystem.h"
 #include "GameFramework/SaveGame.h"
 #include "Interfaces/SaveObjectInterface.h"
 #include "Kismet/GameplayStatics.h"
@@ -15,234 +16,219 @@ void UMultiSlotSaveSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-bool UMultiSlotSaveSubsystem::AddSlot(FString SlotName, bool bCheckLocal)
+bool UMultiSlotSaveSubsystem::AddSlot(FString SlotName, bool bVerbose)
 {
-	if(SlotName.IsEmpty() || SlotName.Len() < 1 || SlotName.Equals(TEXT("")) || SlotName.Equals(TEXT(" ")) )
-	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Slot Name is Empty"));
-		// If the Slot Name is empty, return false
-		return false;
-	}
-	
-	if(bCheckLocal && UGameplayStatics::DoesSaveGameExist(SlotName, 0))
-	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Slot Name already exists locally"));
-		// If the Slot Name already exists, return false
-		return false;
-	}
 
 	if(SaveSlots.Contains(SlotName))
 	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Slot Name already exists"));
-		// If the Slot Name already exists, return true as it is already in the array
-		return true;
-	}
-	
-	// If the slot name is already in the array, return false
-	// Otherwise, add the slot name to the array and return true
-	UE_LOG(LogSaveSystem, Display, TEXT("Adding Slot %s"), *SlotName);
-	const int Index = SaveSlots.AddUnique(SlotName);
-	if(SaveSlots.IsValidIndex(Index))
-	{
-		UE_LOG(LogSaveSystem, Display, TEXT("Slot Added Successfully"));
-		OnSlotAdded.Broadcast(Index, SlotName);
-		return true;
-	}
-
-	UE_LOG(LogSaveSystem, Warning, TEXT("Slot was not added successfully"));
-	return false;
-}
-
-bool UMultiSlotSaveSubsystem::AddSlotAndSetAsActive(FString SlotName, bool bCheckLocal)
-{
-	if(AddSlot(SlotName, bCheckLocal))
-	{
-		return SetActiveSlotByName(SlotName);
-	}
-	return false;
-}
-
-bool UMultiSlotSaveSubsystem::SetActiveSlot(int SlotIndex)
-{
-	UE_LOG(LogSaveSystem, Display, TEXT("Setting Active Slot to %d"), SlotIndex);
-	
-	if(SaveSlots.IsValidIndex(SlotIndex))
-	{
-		UE_LOG(LogSaveSystem, Display, TEXT("Slot Index is valid"));
-		CurrentSaveSlot = SlotIndex;
-		return true;
-	}
-	
-	UE_LOG(LogSaveSystem, Error, TEXT("Slot Index is not valid"));
-	return false;
-}
-
-bool UMultiSlotSaveSubsystem::SetActiveSlotByName(FString SlotName)
-{
-	UE_LOG(LogSaveSystem, Display, TEXT("Setting Active Slot to %s"), *SlotName);
-	return SetActiveSlot(SaveSlots.IndexOfByKey(SlotName));
-}
-
-bool UMultiSlotSaveSubsystem::RemoveSlot(int SlotIndex)
-{
-	if(!SaveSlots.IsValidIndex(SlotIndex))
-	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Slot Index is not valid"));
+		// Slot already exists
+		if(bVerbose) UE_LOG(LogSaveSystem, Warning, TEXT("Slot %s already exists"), *SlotName);
 		return false;
 	}
-
 	
-	UE_LOG(LogSaveSystem, Display, TEXT("Removing Slot at Index %d"), SlotIndex);
-	const FString SlotName = SaveSlots[SlotIndex];
-	SaveSlots.RemoveAt(SlotIndex);
-	OnSlotRemoved.Broadcast(SlotIndex, SlotName);
-	return true;
-}
-
-bool UMultiSlotSaveSubsystem::RemoveSlotByName(FString SlotName)
-{
-	UE_LOG(LogSaveSystem, Display, TEXT("Removing Slot with Name %s"), *SlotName);
-	return RemoveSlot(SaveSlots.IndexOfByKey(SlotName));
-}
-
-FString UMultiSlotSaveSubsystem::GetSlotName(int SlotIndex)
-{
-	return SaveSlots[SlotIndex];
-}
-
-int UMultiSlotSaveSubsystem::GetSlotIndex(FString SlotName)
-{
-	return SaveSlots.IndexOfByKey(SlotName);
-}
-
-int UMultiSlotSaveSubsystem::GetActiveSlotIndex()
-{
-	return CurrentSaveSlot;
-}
-
-FString UMultiSlotSaveSubsystem::GetActiveSlotName()
-{
-	return SaveSlots[CurrentSaveSlot];
-}
-
-USaveGame* UMultiSlotSaveSubsystem::GetSaveGameAtSlot(int SlotIndex)
-{
-	if(!SaveSlots.IsValidIndex(SlotIndex))
+	if(!UGameplayStatics::DoesSaveGameExist(SlotName, 0))
 	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Slot Index is not valid"));
-		return nullptr;
+		if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Creating Save Game Object for Slot %s"), *SlotName);
+		const TObjectPtr<USaveGame> NewSaveGame = UGameplayStatics::CreateSaveGameObject(GetSaveGameClass());
+		if(IsValid(NewSaveGame))
+		{
+			if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Save Game Object Created for Slot %s"), *SlotName);
+			SaveSlots.Add(SlotName, NewSaveGame);
+			CreatedSaveGames.Add(NewSaveGame);
+			OnSlotAdded.Broadcast(SlotName);
+			OnSaveCreated.Broadcast(SlotName);
+			return true;
+		}
+
+		if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Failed to create Save Game Object for Slot %s"), *SlotName);
+		return false;
+		
 	}
 
-	// If it is the current slot, return the current save game
-	if(SlotIndex == CurrentSaveSlot)
+	if(bVerbose) UE_LOG(LogSaveSystem, Warning, TEXT("Save Game Object for Slot %s already exists on Disk. Attempting to Load"), *SlotName);
+	if(LoadSlotFromDisk(SlotName, bVerbose))
 	{
-		UE_LOG(LogSaveSystem, Display, TEXT("Slot Index is the current slot"));
-		return GetSaveGameObject(USaveGame::StaticClass());
+		// Only need to broadcast if the slot was actually loaded. No need to broadcast the OnSaveCreated event as the slot already exists on disk
+		OnSlotAdded.Broadcast(SlotName);
+		return true;
+	}
+	return false;
+}
+
+bool UMultiSlotSaveSubsystem::AddSlotAndSetActive(FString SlotName, bool bLoad, bool bVerbose)
+{
+	if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Adding Slot %s and setting it as active"), *SlotName);
+	if(AddSlot(SlotName))
+	{
+		if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Slot %s added and set as active"), *SlotName);
+		return SetActiveSlot(SlotName, bLoad);
 	}
 	
-	return UGameplayStatics::LoadGameFromSlot(SaveSlots[SlotIndex], 0);
+	if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Failed to add Slot %s and set it as active"), *SlotName);
+	return false;
 }
 
-USaveGame* UMultiSlotSaveSubsystem::GetSaveGameAtSlotByName(FString SlotName)
+bool UMultiSlotSaveSubsystem::RemoveSlot(FString SlotName, bool bVerbose)
 {
-	return GetSaveGameAtSlot(SaveSlots.IndexOfByKey(SlotName));
-}
-
-bool UMultiSlotSaveSubsystem::CreateSaveGameAtSlot(int SlotIndex, bool bOverwriteIfPresent)
-{
-	const int OldSlot = CurrentSaveSlot;
-	SetActiveSlot(SlotIndex);
-	if(bOverwriteIfPresent)
+	// Remove the slot if it exists
+	if(SaveSlots.Contains(SlotName))
 	{
-		StartNewSave(true);
-		OnSaveCreated.Broadcast(CurrentSaveSlot, SaveSlots[CurrentSaveSlot]);
+		if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Removing Slot %s"), *SlotName);
+		// get a reference to the save game object
+		TWeakObjectPtr<USaveGame> SaveGame = SaveSlots[SlotName];
+		// check if it is valid and then delete it if it is
+
+		const bool bResult = SaveSlots.Remove(SlotName) > 0;
+		OnSlotRemoved.Broadcast(SlotName);
+		
+		if(bResult && SaveGame.IsValid())
+		{
+			if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Save Game Object for Slot %s is valid, attempting Destroy"), *SlotName);
+			SaveGame.Get()->BeginDestroy();
+		}
+		else
+		{
+			if(bVerbose) UE_LOG(LogSaveSystem, Warning, TEXT("Save Game Object for Slot %s is invalid, Cannot Destroy"), *SlotName);
+		}
+		
+		return bResult;
 	}
-	if(OldSlot > -1) SetActiveSlot(OldSlot);
-	
-	return bOverwriteIfPresent;
+
+	if(bVerbose) UE_LOG(LogSaveSystem, Warning, TEXT("Slot %s does not exist, Cannot Remove"), *SlotName);
+	return false;
 }
 
-bool UMultiSlotSaveSubsystem::CreateSaveGameAtSlotByName(FString SlotName, bool bOverwriteIfPresent)
+bool UMultiSlotSaveSubsystem::RemoveActiveSlot(bool bVerbose)
+{
+	return RemoveSlot(CurrentSaveSlot, bVerbose);
+}
+
+bool UMultiSlotSaveSubsystem::SaveSlot(FString SlotName, bool bAsync, bool bVerbose)
+{
+	// Save the slot if it exists
+	if(SaveSlots.Contains(SlotName) && SaveSlots[SlotName].IsValid())
+	{
+		if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Saving Slot %s"), *SlotName);
+		if(bAsync)
+		{
+			if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Saving Slot %s asynchronously"), *SlotName);
+			
+			FAsyncSaveGameToSlotDelegate asyncSaveDelegate;
+			asyncSaveDelegate.BindUObject(this, &USaveSubsystem::OnAsyncSaveFinished);
+			
+			UGameplayStatics::AsyncSaveGameToSlot(SaveSlots[SlotName].Get(), SlotName, 0, asyncSaveDelegate);
+		}
+		else
+		{
+			if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Saving Slot %s synchronously"), *SlotName);
+			if(UGameplayStatics::SaveGameToSlot(SaveSlots[SlotName].Get(), SlotName, 0))
+			{
+				ISaveObjectInterface::Execute_OnObjectSaved(SaveSlots[SlotName].Get());
+				return true;
+			}
+			
+			if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Failed to save Slot %s synchronously"), *SlotName);
+			// If the save fails, return false
+			return false;
+		}
+		return true;
+	}
+
+	if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Save Game Object does not exist for Slot %s or Save Game Object is Invalid"), *SlotName);
+	return false;
+}
+
+bool UMultiSlotSaveSubsystem::SaveActiveSlot(bool bAsync, bool bVerbose)
+{
+	// Save the Active Slot if it exists
+	return SaveSlot(CurrentSaveSlot, bAsync, bVerbose);
+}
+
+bool UMultiSlotSaveSubsystem::SetActiveSlot(const FString& String, bool bLoad, bool bVerbose)
+{
+	if(SaveSlots.Contains(String) && SaveSlots[String].IsValid())
+	{
+		CurrentSaveSlot = String;
+		if(bLoad)
+		{
+			LoadData(bVerbose);
+		}
+		return true;
+	}
+
+
+	if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Save Game Object does not exist for Slot %s"), *String);
+	return false;
+}
+
+USaveGame* UMultiSlotSaveSubsystem::GetSaveSlot(FString SlotName, bool bVerbose)
 {
 	if(!SaveSlots.Contains(SlotName))
 	{
-		UE_LOG(LogSaveSystem, Warning, TEXT("Slot Name is not valid"));
-		if(!AddSlot(SlotName))
+		if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Save Game Object does not exist for Slot %s"), *SlotName);
+		return nullptr;
+	}
+
+	if(!SaveSlots[SlotName].IsValid())
+	{
+		if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Save Game Object is invalid for Slot %s"), *SlotName);
+		return nullptr;
+	}
+	
+	return SaveSlots[SlotName].Get();
+}
+
+USaveGame* UMultiSlotSaveSubsystem::GetActiveSaveSlot(bool bVerbose)
+{
+	return GetSaveSlot(CurrentSaveSlot, bVerbose);
+}
+
+bool UMultiSlotSaveSubsystem::LoadSlot(FString SlotName, bool bAsync, bool bVerbose)
+{
+	// Load the slot if it exists
+	if(SaveSlots.Contains(SlotName) && SaveSlots[SlotName].IsValid())
+	{
+		if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Loading Slot %s"), *SlotName);
+		if(bAsync)
 		{
-			UE_LOG(LogSaveSystem, Error, TEXT("Failed to add Slot"));
-			return false;
+			if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Loading Slot %s asynchronously"), *SlotName);
+			
+			FAsyncLoadGameFromSlotDelegate asyncLoadDelegate;
+			asyncLoadDelegate.BindUObject(this, &USaveSubsystem::OnAsyncLoadFinished);
+			
+			UGameplayStatics::AsyncLoadGameFromSlot(SlotName, 0, asyncLoadDelegate);
 		}
+		else
+		{
+			if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Loading Slot %s synchronously"), *SlotName);
+			UGameplayStatics::LoadGameFromSlot(SlotName, 0);
+		}
+		return true;
 	}
-	
-	return CreateSaveGameAtSlot(SaveSlots.IndexOfByKey(SlotName), bOverwriteIfPresent);
-}
 
-bool UMultiSlotSaveSubsystem::ReceiveLoadedSaveGame(int SlotIndex, FString SlotName)
-{
-
-	USaveGame* SaveGame = UGameplayStatics::LoadGameFromSlot(SlotName, 0);
-	
-	// Log the Slot Name and Index
-	UE_LOG(LogSaveSystem, Display, TEXT("Loaded Save Game from Slot %s at Index %d"), *SlotName, SlotIndex);
-	
-	if(!SaveGame)
+	if(LoadSlotFromDisk(SlotName, bVerbose))
 	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Save Game is not valid"));
-		return false;
+		return true;
 	}
 
-	if(!SaveGame->GetClass())
-	{
-		UE_LOG(LogSaveSystem, Error, TEXT("Save Game Class is not valid"));
-		return false;
-	}
-	
-	// Create a slot and save game, with the loaded save game
-	if(!AddSlot(SlotName, false)) return false;
-	const int OldSlot = CurrentSaveSlot;
-
-	// Creates a new save game at the slot index, and sets it as the active slot
-	SetActiveSlot(SlotIndex);
-	SetSaveGameClass(SaveGame->GetClass(), false);
-	LoadData();
-
-	// Assign the loaded save game to the current save game
-	AssignSaveGameObject(SaveGame);
-	if(SaveGame->GetClass()->ImplementsInterface(USaveObjectInterface::StaticClass()))
-	{
-		UE_LOG(LogSaveSystem, Display, TEXT("Save Game Object Implements Save Object Interface"));
-		ISaveObjectInterface::Execute_OnObjectLoaded(SaveGame);
-	}
-	else
-	{
-		UE_LOG(LogSaveSystem, Warning, TEXT("Save Game Object Does NOT Implement Save Object Interface"));
-	}
-	
-	OnSaveCreated.Broadcast(CurrentSaveSlot, SaveSlots[CurrentSaveSlot]);
-	
-	if(OldSlot > -1) SetActiveSlot(OldSlot);
-	
-	return true;
-}
-
-bool UMultiSlotSaveSubsystem::CreateSaveGameAtActiveSlot(bool bOverwriteIfPresent)
-{
-	return CreateSaveGameAtSlot(CurrentSaveSlot, bOverwriteIfPresent);
-}
-
-bool UMultiSlotSaveSubsystem::CreateSaveGameAndSetActiveSlot(FString SlotName, bool bOverwriteIfPresent)
-{
-	if(AddSlotAndSetAsActive(SlotName))	return CreateSaveGameAtSlotByName(SlotName, bOverwriteIfPresent);
-
-	UE_LOG(LogSaveSystem, Error, TEXT("Slot Name is not valid"));
+	if(bVerbose) UE_LOG(LogSaveSystem, Error, TEXT("Save Game Object does not exist for Slot %s or Save Game Object is Invalid"), *SlotName);
 	return false;
-
 }
 
-bool UMultiSlotSaveSubsystem::CreateSaveGameWithIndexAndSetActiveSlot(int SlotIndex, bool bOverwriteIfPresent)
+bool UMultiSlotSaveSubsystem::LoadActiveSlot(bool bAsync, bool bVerbose)
 {
-	if(SaveSlots.IsValidIndex(SlotIndex)) return CreateSaveGameAndSetActiveSlot(SaveSlots[SlotIndex], bOverwriteIfPresent);
+	return LoadSlot(CurrentSaveSlot, bAsync, bVerbose);
+}
 
-	UE_LOG(LogSaveSystem, Error, TEXT("Slot Index is not valid"));
+bool UMultiSlotSaveSubsystem::LoadSlotFromDisk(FString SlotName, bool bVerbose)
+{
+	// Load the slot if it exists on disk
+	if(UGameplayStatics::DoesSaveGameExist(SlotName, 0))
+	{
+		if(bVerbose) UE_LOG(LogSaveSystem, Display, TEXT("Loading Slot %s from disk"), *SlotName);
+		SaveSlots.Add(SlotName, UGameplayStatics::LoadGameFromSlot(SlotName, 0));
+		return true;
+	}
+
 	return false;
 }

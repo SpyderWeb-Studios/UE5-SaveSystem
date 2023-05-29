@@ -29,4 +29,5 @@ public:
 	 * @return The name of the Save Slot to use for the Player
 	 */
 	virtual FString GetPlayerSaveSlot() override;
+
 };
