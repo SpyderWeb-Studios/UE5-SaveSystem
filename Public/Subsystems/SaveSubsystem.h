@@ -58,6 +58,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Save System")
 	void LoadData(bool bVerbose = true);
 
+	/**
+	 * @brief Clears the Save Slot of all data, and deletes the current Player Save Object. Use with caution!
+	 * @param bVerbose 
+	 */
 	UFUNCTION(BlueprintCallable, Category="Save System")
 	void ClearSave(bool bVerbose = true);
 	
@@ -119,6 +123,10 @@ public:
 	UFUNCTION(BlueprintPure)
 	USaveGame* GetRawSaveGameObject();
 
+	/**
+	 * @brief Simple Getter for the Save Game Class
+	 * @return The Save Game Class set to this Subsystem at the time of calling
+	 */
 	UFUNCTION(BlueprintPure)
 	TSubclassOf<USaveGame> GetSaveGameClass();
 

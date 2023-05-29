@@ -23,9 +23,9 @@ class SAVESYSTEM_API ISaveObjectInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SaveSystem")
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SaveSystem|Interface Functions")
     void OnObjectLoaded();
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SaveSystem")
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SaveSystem|Interface Functions")
 	void OnObjectSaved();
 };
