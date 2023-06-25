@@ -44,26 +44,26 @@ public:
 	 * @brief Creates a New Save Game, and overwrites the old one if it exists
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void StartNewSave(bool bLoad = false, bool bVerbose = true);
+	void StartNewSave(bool bLoad = false);
 	
 	/**
 	 * @brief Saves the current Player Data to the Save Slot. Creates a new instance if the current one is invalid or non existent
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void SaveData(bool bAsync = true, bool bVerbose = true);
+	void SaveData(bool bAsync = true);
 
 	/**
 	 * @brief Loads the Player Data from the Save Slot. Creates a new instance if the current one is invalid or non existent
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void LoadData(bool bVerbose = true);
+	void LoadData();
 
 	/**
 	 * @brief Clears the Save Slot of all data, and deletes the current Player Save Object. Use with caution!
 	 * @param bVerbose 
 	 */
 	UFUNCTION(BlueprintCallable, Category="Save System")
-	void ClearSave(bool bVerbose = true);
+	void ClearSave();
 	
 	/**
 	 * @brief Is called when the Async Load is finished, and calls the OnPlayerDataLoaded Event
@@ -83,6 +83,10 @@ public:
 	UFUNCTION()
 	virtual void OnAsyncSaveFinished(const FString& SlotName, const int32 UserIndex, bool bSuccess);
 
+	UFUNCTION()
+	virtual void OnPreSaveObjectComplete(bool bAsyncSave);
+	
+	
 	/**
 	 * @brief Sets the Save Game Class to use for the Player, and resets the Save Game Object with the new class
 	 * @param SaveGameSubClass The Save Game Class to use for the Player
@@ -114,14 +118,14 @@ public:
 	 * @return The Save Game Object for the Player
 	 */
 	UFUNCTION(BlueprintPure, meta = (DeterminesOutputType = "SaveGameClass"))
-	USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass, bool bVerbose = true);
+	virtual USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass);
 
 	/**
 	 * @brief Retrieves the Save Game Object for the Player, without casting it to the specified class
 	 * @return The Save Game Object for the Player
 	 */
 	UFUNCTION(BlueprintPure)
-	USaveGame* GetRawSaveGameObject();
+	virtual USaveGame* GetRawSaveGameObject();
 
 	/**
 	 * @brief Simple Getter for the Save Game Class
@@ -142,6 +146,7 @@ private:
 	/**
 	 * @brief The Class to use for the Save Game Object
 	 */
+	UPROPERTY()
 	TSubclassOf<USaveGame> _SaveGameClass;
 	
 	/**

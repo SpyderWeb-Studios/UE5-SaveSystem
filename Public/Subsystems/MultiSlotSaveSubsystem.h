@@ -63,45 +63,50 @@ public:
 
 #pragma region Add Slot
 
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Add Slot")
+	bool AddEmptySlot(FString SlotName);
+	
 	/**
 	 * @brief Add a Slot to the Save Slots TMap, and create a Save Game Object if it doesn't already exist  Disk.
 	 * @param SlotName The Name of the Slot to add
-	 * @param bVerbose If the function should print out to the log
 	 * @return If the Slot was added successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Add Slot")
-	bool AddSlot(FString SlotName, bool bVerbose = true);
+	bool AddSlot(FString SlotName);
 
 	/**
 	 * @brief Add a Slot to the Save Slots TMap, and create a Save Game Object on the Disk. This will also set the Active Slot to the Slot that was added.
 	 * @param SlotName The Name of the Slot to add
 	 * @param bLoad If the Save Game Object should be loaded after it is created
-	 * @param bVerbose If the function should print out to the log
 	 * @return If the Slot was added successfully and set as the Active Slot
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Add Slot")
-	bool AddSlotAndSetActive(FString SlotName, bool bLoad = false, bool bVerbose = true);
+	bool AddSlotAndSetActive(FString SlotName, bool bLoad = false);
 
 #pragma endregion
 
 #pragma region Remove Slot
 
 	/**
-	 * @brief Remove a Slot from the Save Slots TMap, and delete the Save Game Object from the Disk
+	 * @brief Remove a Slot from the Save Slots TMap
 	 * @param SlotName The Name of the Slot to remove
-	 * @param bVerbose If the function should print out to the log
 	 * @return If the Slot was removed successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Remove Slot")
-	bool RemoveSlot(FString SlotName, bool bVerbose = true);
+	bool RemoveSlot(FString SlotName);
 
 	/**
-	 * @brief Remove the Active Slot from the Save Slots TMap, and delete the Save Game Object from the Disk
-	 * @param bVerbose If the function should print out to the log
+	 * @brief Remove the Active Slot from the Save Slots TMap
 	 * @return If the Active Slot was removed successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Remove Slot")
-	bool RemoveActiveSlot(bool bVerbose = true);
+	bool RemoveActiveSlot();
+
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Remove Slot")
+	bool DeleteSlot(FString SlotName);
+
+	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Remove Slot")
+	bool DeleteActiveSlot();
 
 #pragma endregion
 
@@ -116,7 +121,7 @@ public:
 	 * You'll need to check the OnPlayerDataSaved Event to see if it was successful
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Save Slot")
-	bool SaveSlot(FString SlotName, bool bAsync = true, bool bVerbose = true);
+	bool SaveSlot(FString SlotName, bool bAsync = true);
 
 	/**
 	 * @brief Save the Active Slot in the Save Slots TMap to the Disk
@@ -126,7 +131,7 @@ public:
 	 * You'll need to check the OnPlayerDataSaved Event to see if it was successful
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Save Slot")
-	bool SaveActiveSlot(bool bAsync = true, bool bVerbose = true);
+	bool SaveActiveSlot(bool bAsync = true);
 
 #pragma endregion 
 
@@ -143,7 +148,7 @@ public:
 	 * You'll need to check the OnPlayerDataLoaded Event to see if it was successful
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Load Slot")
-	bool LoadSlot(FString SlotName, bool bAsync = true, bool bVerbose = true);
+	bool LoadSlot(FString SlotName, bool bAsync = true);
 
 	/**
 	 * @brief Load the Active Slot in the Save System, this will not set the Active Slot or call the OnSlotAdded Event
@@ -153,7 +158,7 @@ public:
 	 * You'll need to check the OnPlayerDataLoaded Event to see if it was successful
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Load Slot")
-	bool LoadActiveSlot(bool bAsync = true, bool bVerbose = true);
+	bool LoadActiveSlot(bool bAsync = true);
 
 	/**
 	 * @brief Load a Save Game Object from the Disk by Slot Name, this will not set the Active Slot or call the OnSlotAdded Event
@@ -162,7 +167,7 @@ public:
 	 * @return If the Save Game Object was loaded successfully.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System|Load Slot")
-	bool LoadSlotFromDisk(FString SlotName, bool bVerbose = true);
+	bool LoadSlotFromDisk(FString SlotName);
 
 #pragma endregion
 
@@ -174,7 +179,7 @@ public:
 	 * @return If the Active Slot was set successfully
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System|Multi Slot Save System")
-	bool SetActiveSlot(const FString& String, bool bLoad, bool bVerbose = true);
+	bool SetActiveSlot(const FString& String, bool bLoad);
 
 	/**
 	 * @brief Get the Active Slot Name in the Save System
@@ -182,6 +187,7 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
 	FString GetActiveSlot() {return CurrentSaveSlot;}
+
 	
 	/**
 	 * @brief Get All the Save Slots in the Save System
@@ -189,7 +195,7 @@ public:
 	 * @return An Array of Save Game Objects
 	 */
 	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
-	TArray<USaveGame*> GetAllSaveSlots(bool bVerbose = true);
+	TArray<USaveGame*> GetAllSaveSlots();
 
 	/**
 	 * @brief Get All the Save Slot Names in the Save System, this is useful for displaying the Save Slots in a UI
@@ -207,7 +213,7 @@ protected:
 	 * @return The Save Game Object from the Slot Name
 	 */
 	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
-	USaveGame* GetSaveSlot(FString SlotName, bool bVerbose = true);
+	USaveGame* GetSaveSlot(FString SlotName);
 
 	/**
 	 * @brief Get the Active Save Game Object in the Save System
@@ -215,8 +221,13 @@ protected:
 	 * @return The Active Save Game Object
 	 */
 	UFUNCTION(BlueprintPure, Category = "Save System|Multi Slot Save System")
-	USaveGame* GetActiveSaveSlot(bool bVerbose = true);
+	USaveGame* GetActiveSaveSlot();
 	
+public:
+	virtual USaveGame* GetSaveGameObject(const TSubclassOf<USaveGame> SaveGameClass) override;
+
+	virtual USaveGame* GetRawSaveGameObject() override;
+protected:
 	/**
 	 * @brief The Map of Save Slots in the Save System
 	 */
@@ -232,4 +243,5 @@ protected:
 	 */
 	TArray<TWeakObjectPtr<USaveGame>> CreatedSaveGames;
 };
+
 
