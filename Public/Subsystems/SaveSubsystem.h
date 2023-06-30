@@ -56,7 +56,7 @@ public:
 	 * @brief Loads the Player Data from the Save Slot. Creates a new instance if the current one is invalid or non existent
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Save System")
-	void LoadData();
+	void LoadData(bool bAsync = true);
 
 	/**
 	 * @brief Clears the Save Slot of all data, and deletes the current Player Save Object. Use with caution!

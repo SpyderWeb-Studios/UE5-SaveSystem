@@ -143,7 +143,6 @@ public:
 	 * it will attempt to load it from the Disk if it exists. If it does not exist on the Disk, it will return false
 	 * @param SlotName The Name of the Slot to load
 	 * @param bAsync If the Save Game Object should be loaded asynchronously or not
-	 * @param bVerbose If the function should print out to the log
 	 * @return If the Save Game Object was loaded successfully. If Async is true, this will always return true.
 	 * You'll need to check the OnPlayerDataLoaded Event to see if it was successful
 	 */
@@ -153,7 +152,6 @@ public:
 	/**
 	 * @brief Load the Active Slot in the Save System, this will not set the Active Slot or call the OnSlotAdded Event
 	 * @param bAsync If the Save Game Object should be loaded asynchronously or not
-	 * @param bVerbose If the function should print out to the log
 	 * @return If the Save Game Object was loaded successfully. If Async is true, this will always return true.
 	 * You'll need to check the OnPlayerDataLoaded Event to see if it was successful
 	 */

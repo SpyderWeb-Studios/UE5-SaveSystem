@@ -30,7 +30,6 @@ void USaveSubsystem::StartNewSave(bool bLoad)
 	}
 }
 
-
 void USaveSubsystem::OnAsyncLoadFinished(const FString& SlotName, const int32 UserIndex, USaveGame* SaveGame)
 {
 	UE_LOG(LogSaveSystem, Display, TEXT("Async Loading Finished"));
@@ -169,8 +168,6 @@ bool USaveSubsystem::AssignSaveGameObject(USaveGame* SaveGameObject)
 	return true;
 }
 
-
-
 void USaveSubsystem::SaveData(bool bAsync)
 {
 	UE_LOG(LogSaveSystem, Display, TEXT("Saving Player Data"));
@@ -193,18 +190,25 @@ void USaveSubsystem::SaveData(bool bAsync)
 	
 }
 
-void USaveSubsystem::LoadData()
+void USaveSubsystem::LoadData(bool bAsync)
 {
 	UE_LOG(LogSaveSystem, Display, TEXT("Attempting to Load Data from Slot: %s"),* GetPlayerSaveSlot());
 
 	// If a save game exists in a slot, then load it
 	if(UGameplayStatics::DoesSaveGameExist(GetPlayerSaveSlot(), 0))
 	{
-		UE_LOG(LogSaveSystem, Display, TEXT("Player Save Data Exists. Async Loading"));
+		if(bAsync){
+			UE_LOG(LogSaveSystem, Display, TEXT("Player Save Data Exists. Async Loading"));
 		
-		FAsyncLoadGameFromSlotDelegate asyncLoadDelegate;
-		asyncLoadDelegate.BindUObject(this, &USaveSubsystem::OnAsyncLoadFinished);
-		UGameplayStatics::AsyncLoadGameFromSlot(GetPlayerSaveSlot(), 0, asyncLoadDelegate);
+			FAsyncLoadGameFromSlotDelegate asyncLoadDelegate;
+			asyncLoadDelegate.BindUObject(this, &USaveSubsystem::OnAsyncLoadFinished);
+			UGameplayStatics::AsyncLoadGameFromSlot(GetPlayerSaveSlot(), 0, asyncLoadDelegate);
+		}
+		else
+		{
+			UE_LOG(LogSaveSystem, Display, TEXT("Player Save Data Exists. Sync Loading"));
+			OnAsyncLoadFinished(GetPlayerSaveSlot(), 0, UGameplayStatics::LoadGameFromSlot(GetPlayerSaveSlot(), 0));
+		}
 	}
 
 	// Otherwise, create one
